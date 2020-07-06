@@ -1,0 +1,393 @@
+---
+title: "DataAnalyses"
+author: "Michael Friedman"
+date: "7/6/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(car)
+library(ggplot2)
+library(emmeans)
+library(ggpubr)
+library(lsmeans)
+```
+
+```{r ANOVAs}
+# read transformed datasets
+anovadata <- read.csv("chemistry.csv")
+
+POX_G <- lm(POX_Gua ~ Species * Treatment * Light, data = anovadata)
+anova(POX_G)
+
+POX_O <- lm(POX_Ole ~ Species * Treatment * Light, data = anovadata)
+anova(POX_O)
+      
+PPO_Caff <- lm(PPO_Caf ~ Species * Treatment * Light, data = anovadata)
+anova(PPO_Caff)
+
+PPO_Catechol <- lm(PPO_Cat ~ Species * Treatment * Light, data = anovadata)
+anova(PPO_Catechol)
+
+BG_p <- lm(BG ~ Species * Treatment * Light, data = anovadata)
+anova(BG_p)
+
+CHIT <- lm(CHI ~ Species * Treatment * Light, data = anovadata)
+anova(CHIT)
+
+PROT <- lm(Protein ~ Species * Treatment * Light, data = anovadata)
+anova(PROT)
+
+PHEN <- lm(Phenolics ~ Species * Treatment * Light, data = anovadata)
+anova(PHEN)
+
+T_I <- lm(TI ~ Species * Treatment * Light, data = anovadata)
+anova(T_I)
+
+Carb <- lm(Carbohydrates ~ Species * Treatment * Light, data = anovadata)
+anova(Carb)
+
+Oleo <- lm(Oleuropein ~ Species * Treatment * Light, data = anovadata)
+anova(Oleo)
+
+# post hoc analysis to look at interactions
+emmeans(PPO_Caff, list(pairwise ~ Species * Treatment), adjust = "tukey")
+emmeans(ti, list(pairwise ~ Species * Light * Meja), adjust = "tukey")
+emmeans(pro, list(pairwise ~ Species * Light * Meja), adjust = "tukey")
+emmeans(PHEN, list(pairwise ~ Species * Light), adjust = "tukey")
+emmeans(carb, list(pairwise ~ Species * Light * Meja), adjust = "tukey")
+
+```
+
+```{r PCAs}
+pcadata <- read.csv("miceOutput.csv")
+
+pox_gua <- scale(pcadata$POX_Gua, scale = TRUE) 
+pox_ole <- scale(pcadata$POX_Ole, scale = TRUE) 
+ppo_caf <- scale(pcadata$PPO_Caf, scale = TRUE) 
+ppo_cat <- scale(pcadata$PPO_Cat, scale = TRUE) 
+bg <- scale(pcadata$BG, scale = TRUE) 
+chi <- scale(pcadata$CHI, scale = TRUE) 
+protein <- scale(pcadata$Protein, scale = TRUE) 
+phenolics <- scale(pcadata$Phenolics, scale = TRUE) 
+ti <- scale(pcadata$TI, scale = TRUE) 
+carbohydrates <- scale(pcadata$Carbohydrates, scale = TRUE) 
+lignin <- scale(pcadata$Lignin, scale = TRUE) 
+oleuropein <- scale(pcadata$Oleuropein, scale = TRUE) 
+
+pca.envi <- with(pcadata, data.frame(Species, Treatment, Light, pox_gua, pox_ole, ppo_caf, ppo_cat, bg, chi, protein, phenolics, ti, carbohydrates, lignin, oleuropein))
+head(pca.envi)
+
+pcadata_ba <- pca.envi %>%
+  filter(Species == "F. nigra")
+head(pcadata_ba)
+bacvi <- pcadata_ba[c(2, 4:15)]
+head(bacvi)
+bacvi.pca <- prcomp(bacvi[c(2:13)], scale = TRUE)
+df <- bacvi.pca$rotation
+df
+write.csv(df, file = "bacvi_variableloadings.csv", row.names = TRUE)
+summary(bacvi.pca)
+fviz_eig(bacvi.pca)
+
+
+
+BACVIplot <- fviz_pca_biplot(bacvi.pca,
+                    col.var = "black",
+                    label = "var",
+                    habillage = pcadata_ba$Treatment,
+                    repel = TRUE,
+                    addEllipses = TRUE,
+                    ellipse.level = 0.95,
+                    palette = c("grey39", "grey69"),
+                    title = NULL,
+                    legend.title = "Treatment") +
+  theme(legend.position = "bottom") +
+  xlim(-8, 8) +
+  ylim(-8, 8)
+BACVIplot
+ggsave("BACVI_PCA.pdf", plot = BACVIplot, width = 6, height = 4, units = "in", dpi = 300)
+
+anosimtest1 <- (bacvi[2:13])
+anosim.test1 <- anosim(anosimtest1, bacvi$Treatment, permutations = 999, distance = "euclidean", strata = NULL, parallel = 1)
+anosim.test1
+
+# Constit. V. Induc. WFT
+pcadata_wft <- pca.envi %>%
+  filter(Species == "C. virginicus")
+head(pcadata_wft)
+wftcvi <- pcadata_wft[c(2, 4:15)]
+head(wftcvi)
+wftcvi.pca <- prcomp(wftcvi[c(2:13)], scale = TRUE)
+df <- wftcvi.pca$rotation
+df
+write.csv(df, file = "wftcvi_variableloadings.csv", row.names = TRUE)
+fviz_eig(wftcvi.pca)
+
+WFTCVIplot <- fviz_pca_biplot(wftcvi.pca,
+                    col.var = "black",
+                    label = "var",
+                    habillage = pcadata_wft$Treatment,
+                    repel = TRUE,
+                    addEllipses = TRUE,
+                    ellipse.level = 0.95,
+                    palette = c("grey39", "grey69"),
+                    title = NULL,
+                    legend.title = "Treatment") +
+    theme(legend.position = "bottom") +
+  xlim(-8, 8) +
+  ylim(-8, 8)
+WFTCVIplot
+ggsave("WFTCVI_PCA.pdf", plot = WFTCVIplot, width = 6, height = 4, units = "in", dpi = 300)
+
+anosimtest1 <- (wftcvi[2:13])
+anosim.test1 <- anosim(anosimtest1, wftcvi$Treatment, permutations = 999, distance = "euclidean", strata = NULL, parallel = 1)
+anosim.test1
+
+# Constit BA vs WFT
+pcadata_control <- pca.envi %>%
+  filter(Treatment == "Control")
+head(pcadata_control)
+controlcvi <- pcadata_control[c(1, 4:15)]
+head(controlcvi)
+controlcvi.pca <- prcomp(controlcvi[c(2:13)], scale = TRUE)
+df <- controlcvi.pca$rotation
+df
+write.csv(df, file = "controlcvi_variableloadings.csv", row.names = TRUE)
+fviz_eig(controlcvi.pca)
+
+CONTROLCVIplot <- fviz_pca_biplot(controlcvi.pca,
+                    col.var = "black",
+                    label = "var",
+                    habillage = pcadata_control$Species,
+                    repel = TRUE,
+                    addEllipses = TRUE,
+                    ellipse.level = 0.95,
+                    palette = c("grey39", "grey69"),
+                    title = NULL,
+                    legend.title = "Species") +
+  theme(legend.position = "bottom") +
+  xlim(-8, 8) +
+  ylim(-8, 8)
+CONTROLCVIplot
+ggsave("CONTROLCVI_PCA.pdf", plot = CONTROLCVIplot, width = 6, height = 4, units = "in", dpi = 300)
+
+anosimtest1 <- (controlcvi[2:13])
+anosim.test1 <- anosim(anosimtest1, controlcvi$Species, permutations = 999, distance = "euclidean", strata = NULL, parallel = 1)
+anosim.test1
+
+# INduced BA vs WFT
+pcadata_ind <- pca.envi %>%
+  filter(Treatment == "MeJA")
+head(pcadata_ind)
+indcvi <- pcadata_ind[c(1, 4:15)]
+head(indcvi)
+indcvi.pca <- prcomp(indcvi[c(2:13)], scale = TRUE)
+df <- indcvi.pca$rotation
+df
+write.csv(df, file = "induced_variableloadings.csv", row.names = TRUE)
+fviz_eig(indcvi.pca)
+
+INDCVIplot <- fviz_pca_biplot(indcvi.pca,
+                    col.var = "black",
+                    label = "var",
+                    habillage = pcadata_ind$Species,
+                    repel = TRUE,
+                    addEllipses = TRUE,
+                    ellipse.level = 0.95,
+                    palette = c("grey39", "grey69"),
+                    title = NULL,
+                    legend.title = "Species") +  
+  theme(legend.position = "bottom") +
+  xlim(-8, 8) +
+  ylim(-8, 8)
+INDCVIplot
+ggsave("INDCVI_PCA.pdf", plot = INDCVIplot, width = 6, height = 4, units = "in", dpi = 300)
+
+anosimtest1 <- (indcvi[2:13])
+anosim.test1 <- anosim(anosimtest1, indcvi$Species, permutations = 999, distance = "euclidean", strata = NULL, parallel = 1)
+anosim.test1
+
+### individual plots
+ind1 <- fviz_pca_ind(bacvi.pca,
+                    label = FALSE,
+                    habillage = pcadata_ba$Treatment,
+                    repel = TRUE,
+                    addEllipses = TRUE,
+                    ellipse.level = 0.95,
+                    palette = c("grey39", "grey69"),
+                    title = " ",
+                    legend.title = "Treatment") +
+  theme(legend.position = "bottom") +
+  xlim(-8, 8) +
+  ylim(-8, 8)
+ind1
+
+ind2 <- fviz_pca_ind(wftcvi.pca,
+                    label = FALSE,
+                    habillage = pcadata_wft$Treatment,
+                    repel = TRUE,
+                    addEllipses = TRUE,
+                    ellipse.level = 0.95,
+                    palette = c("grey39", "grey69"),
+                    title = " ",
+                    legend.title = "Treatment") +
+  theme(legend.position = "bottom") +
+  xlim(-8, 8) +
+  ylim(-8, 8)
+ind2
+
+ind3 <- fviz_pca_ind(controlcvi.pca,
+                    label = FALSE,
+                    habillage = pcadata_control$Species,
+                    repel = TRUE,
+                    addEllipses = TRUE,
+                    ellipse.level = 0.95,
+                    palette = c("grey39", "grey69"),
+                    title = " ",
+                    legend.title = "Species") +
+  theme(legend.position = "bottom") +
+  xlim(-8, 8) +
+  ylim(-8, 8)
+ind3
+
+ind4 <- fviz_pca_ind(indcvi.pca,
+                    label = FALSE,
+                    habillage = pcadata_ind$Species,
+                    repel = TRUE,
+                    addEllipses = TRUE,
+                    ellipse.level = 0.95,
+                    palette = c("grey39", "grey69"),
+                    title = " ",
+                    legend.title = "Species") +
+  theme(legend.position = "bottom") +
+  xlim(-8, 8) +
+  ylim(-8, 8)
+ind4
+
+### variable loading plots
+var1 <- fviz_pca_var(bacvi.pca,
+                     repel = TRUE,
+                     title = " ")
+var2 <- fviz_pca_var(wftcvi.pca,
+                     repel = TRUE,
+                     title = " ")
+var3 <- fviz_pca_var(controlcvi.pca,
+                     repel = TRUE,
+                     title = " ")
+var4 <- fviz_pca_var(indcvi.pca,
+                     repel = TRUE,
+                     title = " ")
+
+```
+
+```{r Fv/Fm}
+stderr <- function(x, na.rm=FALSE) {
+  if (na.rm) x <- na.omit(x)
+  sqrt(var(x)/length(x))
+}
+
+data_summary <- function(data, varname, groupnames){
+  require(plyr)
+  summary_func <- function(x, col){
+    c(mean = mean(x[[col]], na.rm = TRUE),
+      stderr = stderr(x[[col]], na.rm = TRUE))
+  }
+  data_sum <- ddply(data, groupnames, .fun = summary_func,
+                    varname)
+  data_sum <- rename(data_sum, c("mean" = varname))
+  return(data_sum)
+}
+
+Fvm <- read.csv("Fv:Fm.csv")
+head(Fvm)
+Fvm$Date = as.Date(Fvm$Date, format = "%m/%d/%Y")
+
+str(Fvm)
+
+Fvm1 <- unite(Fvm, GS, "Genus", "Species", sep = " ")
+Fvm_group <- unite(Fvm1, Group, "GS", "Light", sep = " ")
+FvmSum2 <- data_summary(Fvm, "Fvm", c("Date", "Light"))
+
+Fvmplot2 <- ggplot(FvmSum2, aes(x = Date, y = Fvm, group = Light)) +
+  xlab("Date") + ylab("Fvm") +
+  geom_line() +
+  geom_point(aes(shape = Light, size = Light)) +
+  scale_shape_manual(values=c(15, 16)) +
+  scale_size_manual(values=c(3, 3)) +
+  geom_errorbar(aes(ymin = Fvm - stderr, ymax = Fvm + stderr), width = 0.04) +
+  labs(y = expression(Photosynthetic~Efficiency~(F[V]/F[M]))) +
+  theme_minimal()
+Fvmplot2
+
+```
+
+```{r Growth}
+bud <- read.csv("budgrowth.csv")
+
+bud2 <- unite(bud, Group, "Species", "Light", sep = " ")
+bud2$Date = as.Date(bud2$Date, format = "%m/%d/%Y")
+
+stderr <- function(x, na.rm=FALSE) {
+  if (na.rm) x <- na.omit(x)
+  sqrt(var(x)/length(x))
+}
+
+data_summary <- function(data, varname, groupnames){
+  require(plyr)
+  summary_func <- function(x, col){
+    c(mean = mean(x[[col]], na.rm = TRUE),
+      stderr = stderr(x[[col]], na.rm = TRUE))
+  }
+  data_sum <- ddply(data, groupnames, .fun = summary_func,
+                    varname)
+  data_sum <- rename(data_sum, c("mean" = varname))
+  return(data_sum)
+}
+
+pd <- position_dodge(width = 2.5)
+
+budgrow <- data_summary(bud2, "Length", c("Date", "Group"))
+budgrow
+
+finalamt <- bud %>%
+  filter(Date == "7/24/19")
+head(finalamt)
+
+totalstemlengthANOVA <- lm(Length ~ Species * Light * Treatment, data = finalamt)
+anova(totalstemlengthANOVA)
+
+IGR <- read.csv("~/Desktop/Data/initialgrowthrate.csv")
+str(IGR)
+
+initialstemlengthANOVA <- lm(Initial.Growth.Rate ~ Species * Light * Treatment, data = IGR)
+anova(initialstemlengthANOVA)
+
+```
+
+```{r Larval assay}
+eggdata <- read.csv("larvalassay.csv")
+View(eggdata)
+
+HATCH <- glm(Hatch ~ Species * Treatment * Light, data = eggdata)
+lr.anova <- anova(HATCH, test = "Chisq")
+lr.anova
+
+estab <- eggdata %>%
+  filter(Hatch != "0")
+View(estab)
+
+estab %>%
+  summarise_at(vars(Estab_rate), funs(mean(., na.rm = TRUE), sd))
+
+ESTAB <- glm(Estab ~ Species * Treatment * Light, data = estab)
+lr.anova <- anova(ESTAB, test = "Chisq")
+lr.anova
+
+Gallerywidth <- lm (Gallery_width ~ Species * Treatment * Light, data = eggdata)
+anova(Gallerywidth)
+
+```
+
